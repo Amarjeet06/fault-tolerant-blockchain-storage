@@ -1,0 +1,8 @@
+cd C:\Desktop\Demo1
+set "JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-8.0.442.6-hotspot"
+set PATH=%JAVA_HOME%\bin;%PATH%
+cd JavaReedSolomon-master
+gradlew.bat build
+cd ..
+javac -cp ".;reed-solomon-1.0.jar" src/*.java -d out
+java -cp ".;reed-solomon-1.0.jar;out" Main

@@ -1,0 +1,43 @@
+# Compiled class files
+*.class
+out/
+build/
+
+# Gradle
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# JAR files (except the library source)
+*.jar
+!JavaReedSolomon-master/gradle/wrapper/gradle-wrapper.jar
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Test results
+test-results/
+reports/
+
+# Cursor/Antigravity files
+.antigravity/
+.gemini/
+
