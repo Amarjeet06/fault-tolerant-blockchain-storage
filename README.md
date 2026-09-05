@@ -1,5 +1,8 @@
 # Fault-Tolerant Blockchain Storage (Reed-Solomon Erasure Coding)
 
+[![CI](https://github.com/Amarjeet06/fault-tolerant-blockchain-storage/actions/workflows/ci.yml/badge.svg)](https://github.com/Amarjeet06/fault-tolerant-blockchain-storage/actions/workflows/ci.yml)
+
+
 A blockchain-structured storage engine that survives the loss of any 2 of its
 6 storage nodes without losing or corrupting data, using Reed-Solomon (4
 data + 2 parity) erasure coding, a hash-linked block chain, and a Merkle
