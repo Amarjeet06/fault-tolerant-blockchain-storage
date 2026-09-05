@@ -78,15 +78,30 @@ public class Blockchain {
         System.out.println("Simulated failure of Node " + nodeId);
     }
 
+    /**
+     * Verifies the integrity of the entire chain.
+     *
+     * NOTE: the original version of this method started its loop at i=1,
+     * which checked every block's own hash EXCEPT the genesis block
+     * (index 0) - tampering with chain.get(0).data went undetected. Fixed
+     * to verify every block's self-hash, plus every block's link to its
+     * predecessor.
+     */
     public boolean verifyChain() {
+        if (chain.isEmpty()) return true;
+
+        if (!chain.get(0).hash.equals(chain.get(0).calculateHash())) {
+            return false;
+        }
+
         for (int i = 1; i < chain.size(); i++) {
             Block current = chain.get(i);
             Block previous = chain.get(i-1);
-            
+
             if (!current.hash.equals(current.calculateHash())) {
                 return false;
             }
-            
+
             if (!current.previousHash.equals(previous.hash)) {
                 return false;
             }

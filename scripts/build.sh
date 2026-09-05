@@ -1,43 +1,20 @@
 #!/bin/bash
-# Build script for CS4545 Blockchain Project
-# This script builds the Reed-Solomon library and compiles the project
+# Build script: compiles the vendored JavaReedSolomon sources directly with
+# javac (no Gradle/network access required) and then the main project.
+set -e
+cd "$(dirname "$0")/.."
 
-set -e  # Exit on error
+mkdir -p build/classes
 
-echo "Building JavaReedSolomon library..."
-cd JavaReedSolomon-master
-if [ -f "./gradlew" ]; then
-    chmod +x ./gradlew
-    ./gradlew build
-else
-    echo "Error: gradlew not found in JavaReedSolomon-master directory"
-    exit 1
-fi
-cd ..
+echo "Compiling vendored JavaReedSolomon library..."
+find JavaReedSolomon-master/src/main/java -name "*.java" > /tmp/rs_sources_$$.txt
+javac -d build/classes @/tmp/rs_sources_$$.txt
+rm -f /tmp/rs_sources_$$.txt
 
-echo ""
-echo "Compiling project..."
-mkdir -p out
+echo "Compiling project sources..."
+javac -cp build/classes -d build/classes src/*.java
 
-# Check if JAR exists
-JAR_PATH="JavaReedSolomon-master/build/libs/JavaReedSolomon-master.jar"
-if [ ! -f "$JAR_PATH" ]; then
-    echo "Error: JAR file not found at $JAR_PATH"
-    echo "Please ensure the Reed-Solomon library was built successfully"
-    exit 1
-fi
+echo "Compiling tests..."
+javac -cp build/classes -d build/classes test/*.java
 
-javac -cp ".:$JAR_PATH" src/*.java -d out
-
-if [ $? -eq 0 ]; then
-    echo ""
-    echo "Build successful!"
-    echo ""
-    echo "To run the project:"
-    echo "  java -cp ".:$JAR_PATH:out" Main"
-else
-    echo ""
-    echo "Build failed!"
-    exit 1
-fi
-
+echo "Build successful. Run ./scripts/run_tests.sh or ./scripts/run.sh next."
