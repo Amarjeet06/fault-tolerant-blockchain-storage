@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>fault-tolerant-blockchain-storage — Live Demo</title>
+<style>
+  :root { --bg:#0b0d12; --panel:#12151c; --border2:#2a3040; --text:#e8ecf4; --muted:#8b93a7;
+          --accent:#5eead4; --accent2:#818cf8; --ok:#34d399; --warn:#f59e0b; --danger:#f87171; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  header { border-bottom:1px solid var(--border2); padding:20px 24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
+  header h1 { margin:0; font-size:20px; }
+  header p { margin:4px 0 0; color:var(--muted); font-size:13px; }
+  a.gh { color:var(--accent); text-decoration:none; border:1px solid var(--border2); padding:6px 14px; border-radius:999px; font-size:13px; }
+  a.gh:hover { background:#1a1f2b; }
+  main { max-width: 980px; margin:0 auto; padding:24px; }
+  .banner { border:1px solid #4338ca55; background:#1e1b4b55; color:#c7d2fe; border-radius:10px; padding:10px 14px; font-size:13px; margin-bottom:22px; line-height:1.5; }
+  .banner code { background:#312e8155; padding:1px 5px; border-radius:4px; }
+  section { background:var(--panel); border:1px solid var(--border2); border-radius:12px; padding:18px 20px; margin-bottom:20px; }
+  section h2 { margin:0 0 6px; font-size:15px; letter-spacing:0.04em; text-transform:uppercase; color:var(--accent2); }
+  section p.desc { color:var(--muted); font-size:12.5px; margin:0 0 14px; line-height:1.5; }
+  .controls { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:16px; }
+  input, select, button { font-family:inherit; font-size:13px; background:#0e1117; border:1px solid var(--border2); color:var(--text); border-radius:6px; padding:7px 10px; }
+  input#msgInput { width:340px; max-width:100%; }
+  button { cursor:pointer; background:#1a1f2b; }
+  button:hover { border-color:var(--accent); }
+  button.primary { background:#134e4a; border-color:#0d9488; }
+  .nodes { display:grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap:10px; margin-top:6px; }
+  .node { border:1px solid var(--border2); border-radius:8px; padding:12px; background:#0e1117; cursor:pointer; user-select:none; transition:border-color .15s; }
+  .node:hover { border-color:var(--accent2); }
+  .node h3 { margin:0 0 6px; font-size:11.5px; color:var(--muted); }
+  .node .badge { font-size:10px; padding:1px 6px; border-radius:999px; margin-left:6px; }
+  .node.data .badge { background:#312e81; color:#c7d2fe; }
+  .node.parity .badge { background:#134e4a; color:#5eead4; }
+  .node .bytes { font-size:10.5px; color:var(--muted); word-break:break-all; line-height:1.4; }
+  .node.dead { border-color:var(--danger); opacity:0.45; }
+  .node.dead .bytes::before { content: "✕ NODE DOWN — "; color:var(--danger); }
+  .result { margin-top:16px; padding:12px 14px; border-radius:8px; font-size:13px; line-height:1.6; }
+  .result.ok { background:#052e2166; border:1px solid #0d9488; color:#a7f3d0; }
+  .result.bad { background:#450a0a66; border:1px solid #b91c1c; color:#fecaca; }
+  .stat-row { display:flex; gap:18px; flex-wrap:wrap; color:var(--muted); font-size:12px; margin-top:8px; }
+  .stat-row b { color:var(--text); }
+  footer { text-align:center; color:var(--muted); font-size:12px; padding:30px 0; }
+  footer a { color:var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>fault-tolerant-blockchain-storage</h1>
+    <p>Blockchain storage engine surviving 2-of-6 node failures — Java, Reed-Solomon (4+2) erasure coding</p>
+  </div>
+  <a class="gh" href="https://github.com/Amarjeet06/fault-tolerant-blockchain-storage" target="_blank" rel="noreferrer">View source on GitHub ↗</a>
+</header>
+<main>
+  <div class="banner">
+    🟡 This page runs a <strong>real Reed-Solomon (4 data + 2 parity) GF(256) erasure
+    codec written in JavaScript</strong> — the same systematic-Vandermonde-matrix
+    construction as <code>src/ReedSolomonHelper.java</code> in this repo — so encoding
+    and reconstruction below are genuine, not simulated. Encode a message, "kill" any
+    2 of the 6 storage nodes, and reconstruct it byte-for-byte in your browser.
+  </div>
+
+  <section>
+    <h2>Encode &amp; reconstruct</h2>
+    <p class="desc">Enter a short message (this is what a block's data field would hold), click Encode to split it across 4 data + 2 parity shards, then click up to 2 nodes to mark them as failed and hit Reconstruct.</p>
+    <div class="controls">
+      <input id="msgInput" value="2005,Physics,Roy J. Glauber,USA,Male" />
+      <button class="primary" id="btnEncode">Encode</button>
+      <button id="btnReconstruct">Reconstruct from surviving nodes</button>
+      <button id="btnReset">Reset failures</button>
+    </div>
+    <div class="nodes" id="nodes"></div>
+    <div id="resultBox"></div>
+  </section>
+
+  <section>
+    <h2>Real measured results (from README / CI)</h2>
+    <p class="desc">From the 19-assertion CI-verified test suite and <code>Benchmark.java</code> / <code>ScaleBenchmark.java</code>, not simulated here:</p>
+    <div class="stat-row">
+      <span>Throughput: <b>~150,000 writes/sec</b></span>
+      <span>Range queries: <b>~1,000/sec</b></span>
+      <span>Dataset: <b>10,000 blocks</b></span>
+      <span>Decode errors under 2 failures: <b>0</b></span>
+      <span>Correctness bugs found &amp; fixed: <b>2</b></span>
+    </div>
+  </section>
+</main>
+<footer>
+  Built by Amarjeet Singh Minhas · <a href="https://github.com/Amarjeet06/fault-tolerant-blockchain-storage">source</a>
+</footer>
+
+<script>
+// ---- Real GF(256) Reed-Solomon (4 data + 2 parity), verified against the
+// same construction used in src/ReedSolomonHelper.java ----
+const DATA_SHARDS = 4, TOTAL_SHARDS = 6;
+const EXP = new Uint8Array(512), LOG = new Uint8Array(256);
+(function initTables() {
+  let x = 1;
+  for (let i = 0; i < 255; i++) { EXP[i] = x; LOG[x] = i; x <<= 1; if (x & 0x100) x ^= 0x11d; }
+  for (let i = 255; i < 512; i++) EXP[i] = EXP[i - 255];
+})();
+function gmul(a, b) { if (a === 0 || b === 0) return 0; return EXP[LOG[a] + LOG[b]]; }
+function gdiv(a, b) { if (a === 0) return 0; return EXP[(LOG[a] - LOG[b] + 255) % 255]; }
+function gexp(a, n) { if (n === 0) return 1; let r = 1; for (let i = 0; i < n; i++) r = gmul(r, a); return r; }
+function newMatrix(rows, cols) { return Array.from({length: rows}, () => new Uint8Array(cols)); }
+function vandermonde(rows, cols) { const m = newMatrix(rows, cols); for (let r=0;r<rows;r++) for (let c=0;c<cols;c++) m[r][c] = gexp(r, c); return m; }
+function subMatrix(m, rs, cs, rows, cols) { const out = newMatrix(rows, cols); for (let r=0;r<rows;r++) for (let c=0;c<cols;c++) out[r][c] = m[rs+r][cs+c]; return out; }
+function invert(m) {
+  const n = m.length;
+  const aug = newMatrix(n, 2*n);
+  for (let r=0;r<n;r++){ for (let c=0;c<n;c++) aug[r][c] = m[r][c]; aug[r][n+r] = 1; }
+  for (let col=0; col<n; col++) {
+    let pivotRow = -1;
+    for (let r=col; r<n; r++) if (aug[r][col] !== 0) { pivotRow = r; break; }
+    if (pivotRow === -1) throw new Error("singular matrix");
+    const tmp = aug[col]; aug[col] = aug[pivotRow]; aug[pivotRow] = tmp;
+    const inv = gdiv(1, aug[col][col]);
+    for (let c=0;c<2*n;c++) aug[col][c] = gmul(aug[col][c], inv);
+    for (let r=0;r<n;r++) {
+      if (r === col) continue;
+      const factor = aug[r][col];
+      if (factor === 0) continue;
+      for (let c=0;c<2*n;c++) aug[r][c] ^= gmul(factor, aug[col][c]);
+    }
+  }
+  return subMatrix(aug, 0, n, n, n);
+}
+function matMul(a, b) {
+  const rows = a.length, inner = b.length, cols = b[0].length;
+  const out = newMatrix(rows, cols);
+  for (let r=0;r<rows;r++) for (let c=0;c<cols;c++) { let sum=0; for (let k=0;k<inner;k++) sum ^= gmul(a[r][k], b[k][c]); out[r][c]=sum; }
+  return out;
+}
+function buildEncodingMatrix(dataShards, totalShards) {
+  const vm = vandermonde(totalShards, dataShards);
+  const top = subMatrix(vm, 0, 0, dataShards, dataShards);
+  return matMul(vm, invert(top));
+}
+const MATRIX = buildEncodingMatrix(DATA_SHARDS, TOTAL_SHARDS);
+
+function encode(message) {
+  const bytes = new TextEncoder().encode(message);
+  const shardSize = Math.ceil(bytes.length / DATA_SHARDS) || 1;
+  const dataShards = [];
+  for (let i = 0; i < DATA_SHARDS; i++) {
+    const shard = new Uint8Array(shardSize);
+    for (let j = 0; j < shardSize; j++) shard[j] = bytes[i*shardSize+j] || 0;
+    dataShards.push(shard);
+  }
+  const shards = [...dataShards];
+  for (let r = DATA_SHARDS; r < TOTAL_SHARDS; r++) {
+    const shard = new Uint8Array(shardSize);
+    for (let j = 0; j < shardSize; j++) {
+      let sum = 0;
+      for (let c = 0; c < DATA_SHARDS; c++) sum ^= gmul(MATRIX[r][c], dataShards[c][j]);
+      shard[j] = sum;
+    }
+    shards.push(shard);
+  }
+  return { shards, shardSize, originalLength: bytes.length };
+}
+function decode(shardsWithNulls, shardSize) {
+  const present = [];
+  for (let i = 0; i < TOTAL_SHARDS; i++) if (shardsWithNulls[i] !== null) present.push(i);
+  if (present.length < DATA_SHARDS) return null;
+  const subsetIdx = present.slice(0, DATA_SHARDS);
+  const decodeMatrix = invert(subsetIdx.map(i => MATRIX[i]));
+  const recovered = [];
+  for (let c = 0; c < DATA_SHARDS; c++) {
+    const shard = new Uint8Array(shardSize);
+    for (let j = 0; j < shardSize; j++) {
+      let sum = 0;
+      for (let k = 0; k < DATA_SHARDS; k++) sum ^= gmul(decodeMatrix[c][k], shardsWithNulls[subsetIdx[k]][j]);
+      shard[j] = sum;
+    }
+    recovered.push(shard);
+  }
+  return recovered;
+}
+function toHex(bytes) { return [...bytes].map(b => b.toString(16).padStart(2,"0")).join(" "); }
+
+let state = null; // { shards, shardSize, originalLength, dead: Set }
+
+function renderNodes() {
+  const el = document.getElementById("nodes");
+  if (!state) { el.innerHTML = '<p style="color:var(--muted);font-size:12px;">Click Encode to generate shards.</p>'; return; }
+  el.innerHTML = "";
+  state.shards.forEach((shard, i) => {
+    const isData = i < DATA_SHARDS;
+    const div = document.createElement("div");
+    div.className = `node ${isData ? "data" : "parity"}${state.dead.has(i) ? " dead" : ""}`;
+    div.innerHTML = `<h3>Node ${i} <span class="badge">${isData ? "DATA " + i : "PARITY " + (i-DATA_SHARDS)}</span></h3>` +
+      `<div class="bytes">${toHex(shard).slice(0, 60)}${shard.length > 20 ? "…" : ""}</div>`;
+    div.addEventListener("click", () => {
+      if (state.dead.has(i)) state.dead.delete(i);
+      else state.dead.add(i);
+      renderNodes();
+    });
+    el.appendChild(div);
+  });
+}
+
+document.getElementById("btnEncode").addEventListener("click", () => {
+  const msg = document.getElementById("msgInput").value || "demo block data";
+  const { shards, shardSize, originalLength } = encode(msg);
+  state = { shards, shardSize, originalLength, dead: new Set(), original: msg };
+  document.getElementById("resultBox").innerHTML = "";
+  renderNodes();
+});
+document.getElementById("btnReset").addEventListener("click", () => {
+  if (!state) return;
+  state.dead.clear();
+  document.getElementById("resultBox").innerHTML = "";
+  renderNodes();
+});
+document.getElementById("btnReconstruct").addEventListener("click", () => {
+  const box = document.getElementById("resultBox");
+  if (!state) { box.innerHTML = '<div class="result bad">Encode a message first.</div>'; return; }
+  const withNulls = state.shards.map((s, i) => state.dead.has(i) ? null : s);
+  const failures = state.dead.size;
+  const recovered = decode(withNulls, state.shardSize);
+  if (!recovered) {
+    box.innerHTML = `<div class="result bad">✕ UNRECOVERABLE — ${failures} of 6 nodes down, need at least 4 surviving (tolerates ≤2 failures). This matches the system's designed degradation: it correctly refuses to guess rather than returning silently-corrupt data.</div>`;
+    return;
+  }
+  const bytes = new Uint8Array(recovered.length * state.shardSize);
+  recovered.forEach((s, i) => bytes.set(s, i*state.shardSize));
+  const text = new TextDecoder().decode(bytes.slice(0, state.originalLength));
+  const ok = text === state.original;
+  box.innerHTML = `<div class="result ${ok ? "ok" : "bad"}">${ok ? "✓" : "✕"} Reconstructed with ${failures} node(s) down: <strong>"${text}"</strong> ${ok ? "— byte-for-byte match, 0 decode errors." : "— MISMATCH (unexpected)."}</div>`;
+});
+
+document.getElementById("btnEncode").click();
+</script>
+</body>
+</html>
